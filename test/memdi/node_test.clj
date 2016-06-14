@@ -1,6 +1,6 @@
 (ns memdi.node-test
   (:require [clojure.test :refer [deftest testing is]]
-            [memdi.node :refer [master-node Node write-key read-key]]))
+            [memdi.node :refer [master-node slave-node Node write-key read-key]]))
 
 (deftest master-node-test
   (testing "A master node should be created with the correct values"
@@ -14,3 +14,10 @@
     (let [node (master-node "daredevil")]
       (write-key node "key" "String data")
       (is (= (read-key node "key") "String data")))))
+
+(deftest slave-node-test
+  (testing "A slave node should be created with the correct values"
+    (let [expected {:master? false
+                    :name "daredevil"}]
+      (is (.equals expected (-> (slave-node "daredevil")
+                                (dissoc :store)))))))

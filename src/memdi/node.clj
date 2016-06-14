@@ -18,10 +18,20 @@
     (-> @(:store this)
         ((keyword k)))))
 
+(defn- node
+  [name master]
+  (SimpleNode. (atom {}) name master))
+
 (defn master-node
   "Given a name return a new memdi node with
   the specified name and `:master? true`"
   [name]
-  (SimpleNode. (atom {}) name true))
+  (node name true))
+
+(defn slave-node
+  "Given a name return a new memdi node with
+  the specified name and `:master? false`"
+  [name]
+  (node name false))
 
 
