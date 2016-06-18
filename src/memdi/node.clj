@@ -2,8 +2,8 @@
 
 (defprotocol Node
   "A protocol representing a memdi node."
-  (write-key [this k v])
-  (read-key [this k]))
+  (write [this k v])
+  (read [this k]))
 
 (defprotocol MasterNode
   "A protocol representing a memdi master node."
@@ -13,59 +13,78 @@
   "A protocol representing a memdi slave node."
   (replicate-key [this k v]))
 
-(defrecord InMemoryMasterNode [store name slaves])
-(defrecord InMemorySlaveNode [store name master])
+(defprotocol ReadWrite
+  "A protocol to represent a read write strategy."
+  (write-key [this k v])
+  (read-key [this k]))
 
-(extend-type InMemoryMasterNode Node
+(defrecord Master [rw-strategy name slaves])
+(defrecord Slave [rw-strategy name master])
+
+(defrecord InMemoryReadWrite [store])
+
+(extend-type InMemoryReadWrite ReadWrite
   (write-key
     [this k v]
     (-> (:store this)
-        (swap! conj {(keyword k) v}))
-    (let [slaves @(:slaves this)]
-        (doseq [slave slaves]
-          (replicate-key slave k v)))
-    this)
+        (swap! conj {(keyword k) v})))
   (read-key
     [this k]
     (-> @(:store this)
         ((keyword k)))))
 
-(extend-type InMemoryMasterNode MasterNode
+(extend-type Master Node
+  (write
+    [this k v]
+    (-> (:rw-strategy this)
+        (write-key k v))
+    (let [slaves @(:slaves this)]
+        (doseq [slave slaves]
+          (replicate-key slave k v)))
+    this)
+  (read
+    [this k]
+    (-> (:rw-strategy this)
+        (read-key (keyword k)))))
+
+(extend-type Master MasterNode
   (add-slave
     [this slave]
     (-> (:slaves this)
         (swap! conj (assoc slave :master this)))
     (-> (:master slave)
         (reset! this))
-    (let [store @(:store this)]
+    (let [store @(:store (:rw-strategy this))]
       (doseq [[k v] store]
         (replicate-key slave (name k) v)))
     this))
 
-(extend-type InMemorySlaveNode Node
-  (write-key
+(extend-type Slave Node
+  (write
     [this k v]
     (-> @(:master this)
+        (:rw-strategy)
         (write-key k v)))
-  (read-key
+  (read
     [this k]
-    (-> @(:store this)
-        ((keyword k)))))
+    (-> (:rw-strategy this)
+        (read-key (keyword k)))))
 
-(extend-type InMemorySlaveNode SlaveNode
+(extend-type Slave SlaveNode
   (replicate-key
     [this k v]
-    (-> (:store this)
+    (-> (:rw-strategy this)
+        (:store)
         (swap! conj {(keyword k) v}))))
 
 (defn master-node
   "Given a name return a new memdi node with
   no slaves."
   [name]
-   (InMemoryMasterNode. (atom {}) name (atom [])))
+   (Master. (InMemoryReadWrite.  (atom {})) name (atom [])))
 
 (defn slave-node
   "Given a name return a new memdi node with
   the specified master."
   [name]
-  (InMemorySlaveNode. (atom {}) name (atom {})))
+  (Slave. (InMemoryReadWrite. (atom {})) name (atom {})))
