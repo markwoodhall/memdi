@@ -17,7 +17,6 @@
 
 (defrecord Master [rw-strategy name slaves])
 (defrecord Slave [rw-strategy name master])
-
 (defrecord InMemoryReadWrite [store])
 
 (extend-type InMemoryReadWrite ReadWrite
