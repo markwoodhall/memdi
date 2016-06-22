@@ -9,14 +9,11 @@
   "A protocol representing a memdi master node."
   (add-slave [this slave]))
 
-(defprotocol SlaveNode
-  "A protocol representing a memdi slave node."
-  (replicate-key [this k v]))
-
 (defprotocol ReadWrite
   "A protocol to represent a read write strategy."
   (write-key [this k v])
-  (read-key [this k]))
+  (read-key [this k])
+  (replicate-key [this k v]))
 
 (defrecord Master [rw-strategy name slaves])
 (defrecord Slave [rw-strategy name master])
@@ -31,7 +28,11 @@
   (read-key
     [this k]
     (-> @(:store this)
-        ((keyword k)))))
+        ((keyword k))))
+  (replicate-key
+    [this k v]
+    (-> (:store this)
+        (swap! conj {(keyword k) v}))))
 
 (extend-type Master Node
   (write
@@ -39,8 +40,8 @@
     (-> (:rw-strategy this)
         (write-key k v))
     (let [slaves @(:slaves this)]
-        (doseq [slave slaves]
-          (replicate-key slave k v)))
+        (doseq [{:keys [rw-strategy]} slaves]
+          (replicate-key rw-strategy k v)))
     this)
   (read
     [this k]
@@ -56,7 +57,7 @@
         (reset! this))
     (let [store @(:store (:rw-strategy this))]
       (doseq [[k v] store]
-        (replicate-key slave (name k) v)))
+        (replicate-key (:rw-strategy slave) (name k) v)))
     this))
 
 (extend-type Slave Node
@@ -69,13 +70,6 @@
     [this k]
     (-> (:rw-strategy this)
         (read-key (keyword k)))))
-
-(extend-type Slave SlaveNode
-  (replicate-key
-    [this k v]
-    (-> (:rw-strategy this)
-        (:store)
-        (swap! conj {(keyword k) v}))))
 
 (defn master-node
   "Given a name return a new memdi node with
