@@ -51,6 +51,8 @@
 (extend-type Master MasterNode
   (add-slave!
     [this slave]
+    {:pre [(and (satisfies? Node slave)
+                (not (satisfies? MasterNode slave)))]}
     (-> (:slaves this)
         (swap! conj (assoc slave :master this)))
     (-> (:master slave)

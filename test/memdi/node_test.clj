@@ -3,6 +3,9 @@
   (:require [clojure.test :refer [deftest testing is]]
             [memdi.node :refer [master-node slave-node write! read add-slave!]]))
 
+(def invalid-slave-msg
+  #"Assert failed: \(and \(satisfies\? Node slave\) \(not \(satisfies\? MasterNode slave\)\)\)")
+
 (deftest master-node-test
   (testing "A master node should be created with the correct values"
     (let [expected {:name "daredevil"}]
@@ -24,7 +27,23 @@
       (add-slave! master slave2)
       (write! master "key" "String data")
       (is (and (= (read slave "key") "String data")
-               (= (read slave2 "key") "String data"))))))
+               (= (read slave2 "key") "String data")))))
+
+  (testing "Adding a slave fails if the slave does not implement the node protocol"
+    (let [master (master-node "daredevil")
+          slave {}]
+      (is (thrown-with-msg?
+            AssertionError
+            invalid-slave-msg
+            (add-slave! master slave)))))
+
+  (testing "Adding a slave fails if the slave implements the master protocol"
+    (let [master (master-node "daredevil")
+          slave (master-node "fisk")]
+      (is (thrown-with-msg?
+            AssertionError
+            invalid-slave-msg
+            (add-slave! master slave))))))
 
 (deftest slave-node-test
   (testing "A slave node should be created with the correct values"
