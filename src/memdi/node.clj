@@ -83,6 +83,7 @@
   "Given a name return a new memdi node with
   the specified or default master."
   ([name]
-   (slave-node name (atom {})))
+   (Slave. (InMemoryReadWrite. (atom {})) name (atom {})))
   ([name master]
-   (Slave. (InMemoryReadWrite. (atom {})) name master)))
+   {:pre [(satisfies? MasterNode master)]}
+   (Slave. (InMemoryReadWrite. (atom {})) name (atom master))))

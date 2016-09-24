@@ -46,9 +46,19 @@
             (add-slave! master slave))))))
 
 (deftest slave-node-test
+
   (testing "A slave node should be created with the correct values"
     (let [master (master-node "daredevil")
           slave (slave-node "foggy")
+          slave (first @(:slaves (add-slave! master slave)))
+          expected {:name "foggy"
+                    :master master}]
+      (is (.equals expected (-> slave
+                                (dissoc :rw-strategy))))))
+
+  (testing "A slave node with a preset master should be created with the correct values"
+    (let [master (master-node "daredevil")
+          slave (slave-node "foggy" master)
           slave (first @(:slaves (add-slave! master slave)))
           expected {:name "foggy"
                     :master master}]
