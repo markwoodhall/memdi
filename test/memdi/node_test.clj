@@ -7,6 +7,7 @@
   #"Assert failed: \(and \(satisfies\? Node slave\) \(not \(satisfies\? MasterNode slave\)\)\)")
 
 (deftest master-node-test
+
   (testing "A master node should be created with the correct values"
     (let [expected {:name "daredevil"}]
       (is (.equals expected (-> (master-node "daredevil")
