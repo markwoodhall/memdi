@@ -53,9 +53,11 @@
     [this slave]
     {:pre [(and (satisfies? Node slave)
                 (not (satisfies? MasterNode slave)))]}
-    (-> (:slaves this)
+    (-> this
+        :slaves
         (swap! conj (assoc slave :master this)))
-    (-> (:master slave)
+    (-> slave
+        :master
         (reset! this))
     (let [store @(:store (:rw-strategy this))]
       (doseq [[k v] store]
